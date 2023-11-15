@@ -1,34 +1,65 @@
-enum Event {
-    Key(crossterm::event::KeyEvent)
+use color_eyre::eyre::Result;
+use crossterm::event::KeyEvent;
+use futures::{FutureExt, StreamExt};
+use tokio::{sync::mpsc, task::JoinHandle};
+
+#[derive(Clone, Copy, Debug)]
+pub enum Event {
+    Error,
+    Tick,
+    Key(KeyEvent),
 }
 
-struct EventHandler {
-    rx: tokio::sync::mpsc::UnboundedReceiver<Event>,
+#[derive(Debug)]
+pub struct EventHandler {
+    _tx: mpsc::UnboundedSender<Event>,
+    rx: mpsc::UnboundedReceiver<Event>,
+    task: Option<JoinHandle<()>>,
 }
 
 impl EventHandler {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let tick_rate = std::time::Duration::from_millis(250);
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-        tokio::spawn(async move {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let _tx = tx.clone();
+
+        let task = tokio::spawn(async move {
+            let mut reader = crossterm::event::EventStream::new();
+            let mut interval = tokio::time::interval(tick_rate);
+
             loop {
-                if crossterm::event::poll(tick_rate).unwrap() {
-                    match crossterm::event::read().unwrap() {
-                        CrosstermEvent::Key(e) => {
-                            if key.kind == event::KeyEventKind::Press {
-                                tx.send(Event::Key(e).unwrap())
+                let delay = interval.tick();
+                let crossterm_event = reader.next().fuse();
+                tokio::select! {
+                    maybe_event = crossterm_event => {
+                        match maybe_event {
+                            Some(Ok(evt)) => {
+                                match evt {
+                                    crossterm::event::Event::Key(key) => {
+                                        if key.kind == crossterm::event::KeyEventKind::Press {
+                                            tx.send(Event::Key(key)).unwrap();
+                                        }
+                                    },
+                                    _ => {},
+                                }
                             }
-                        },
-                        _ => unimplemented!(), 
-                    }
+                            Some(Err(_)) => {
+                                tx.send(Event::Error).unwrap();
+                            }
+                            None => {},
+                        }
+                    },
+                    _ = delay => {
+                        tx.send(Event::Tick).unwrap();
+                    },
                 }
             }
-        })
+        });
 
-        EventHandler { rx }
+        Self { _tx, rx, task: Some(task) }
     }
 
-    async fn next(&mut self) -> Result<Event> {
-        self.rx.recv().await.ok_or(color_eyre::eyre!("Unable to get event"))
+    pub async fn next(&mut self) -> Result<Event> {
+        self.rx.recv().await.ok_or(color_eyre::eyre::eyre!("Unable to get event"));
     }
 }
