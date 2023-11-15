@@ -9,6 +9,12 @@ use ratatui::{
     widgets::Paragraph,
 };
 
+mod tui;
+
+use crate::tui::Event;
+use crate::tui::EventHandler;
+
+
 pub type Frame<'a> = ratatui::Frame<'a>;
 
 fn startup() -> Result<()> {
@@ -32,28 +38,27 @@ fn ui(app: &App, f: &mut Frame<'_>) {
     f.render_widget(Paragraph::new(format!("Counter: {}", app.counter)), f.size());
 }
 
-fn update(app: &mut App) -> Result<()> {
-    if event::poll(std::time::Duration::from_millis(250))? {
-        if let Key(key) = event::read()? {
-            if key.kind == event::KeyEventKind::Press {
-                match key.code {
-                    Char('j') => app.counter += 1,
-                    Char('k') => app.counter -= 1,
-                    Char('q') => app.should_quit = true,
-                    _ => {},
-                }
-            }
+fn update(app: &mut App, event: Event) -> Result<()> {
+    if let Event::Key(key) = event {
+        match key.code {
+            Char('j') => app.counter += 1,
+            Char('k') => app.counter -= 1,
+            Char('q') => app.should_quit = true,
+            _ => {},
         }
     }
     Ok(())
 }
 
-fn run() -> Result<()> {
+async fn run() -> Result<()> {
+    let mut events = EventHandler::new();
     let mut t = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
     let mut app = App { counter: 0, should_quit: false };
 
     loop {
-        update(&mut app);
+        let event = events.next().await?;
+
+        let _ = update(&mut app, event);
         t.draw(|f| {
             ui(&app, f);
         })?;
@@ -70,7 +75,7 @@ fn run() -> Result<()> {
 async fn main() -> Result<()> {
     startup()?;
 
-    let result = run();
+    let result = run().await;
 
     shutdown()?;
 
