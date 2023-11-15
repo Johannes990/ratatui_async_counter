@@ -66,7 +66,8 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     startup()?;
 
     let result = run();
