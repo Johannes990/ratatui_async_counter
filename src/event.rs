@@ -27,4 +27,8 @@ impl EventHandler {
 
         EventHandler { rx }
     }
+
+    async fn next(&mut self) -> Result<Event> {
+        self.rx.recv().await.ok_or(color_eyre::eyre!("Unable to get event"))
+    }
 }
