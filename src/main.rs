@@ -12,7 +12,7 @@ use ratatui::{
 mod tui;
 
 use crate::tui::Event;
-use crate::tui::EventHandler;
+use crate::tui::Tui;
 
 
 pub type Frame<'a> = ratatui::Frame<'a>;
@@ -51,7 +51,7 @@ fn update(app: &mut App, event: Event) -> Result<()> {
 }
 
 async fn run() -> Result<()> {
-    let mut events = EventHandler::new();
+    let mut events = Tui::new();
     let mut t = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
     let mut app = App { counter: 0, should_quit: false };
 
