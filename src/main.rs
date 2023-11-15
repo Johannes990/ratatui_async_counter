@@ -9,7 +9,7 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-pub type Frame<'a> = ratatui::Frame<'a, CrosstermBackend<std::io::Stderr>>;
+pub type Frame<'a> = ratatui::Frame<'a>;
 
 fn startup() -> Result<()> {
     enable_raw_mode()?;
@@ -20,6 +20,7 @@ fn startup() -> Result<()> {
 fn shutdown() -> Result<()> {
     execute!(std::io::stderr(), LeaveAlternateScreen)?;
     disable_raw_mode()?;
+    Ok(())
 }
 
 struct App {
@@ -33,7 +34,7 @@ fn ui(app: &App, f: &mut Frame<'_>) {
 
 fn update(app: &mut App) -> Result<()> {
     if event::poll(std::time::Duration::from_millis(250))? {
-        if let Key(key) = event.read()? {
+        if let Key(key) = event::read()? {
             if key.kind == event::KeyEventKind::Press {
                 match key.code {
                     Char('j') => app.counter += 1,
@@ -49,7 +50,7 @@ fn update(app: &mut App) -> Result<()> {
 
 fn run() -> Result<()> {
     let mut t = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
-    let mu app = App { counter: 0, should_quit: false };
+    let mut app = App { counter: 0, should_quit: false };
 
     loop {
         update(&mut app);
