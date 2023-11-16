@@ -163,7 +163,7 @@ impl Tui {
     }
 
     pub fn exit(&mut self) -> Result<()> {
-        self.stop()?;
+        // self.stop()?;
         if crossterm::terminal::is_raw_mode_enabled()? {
             self.flush()?;
             if self.paste {
