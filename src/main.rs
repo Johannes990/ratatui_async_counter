@@ -1,33 +1,12 @@
-use color_eyre::eyre::Result;
-use crossterm::{
-    event::{self, Event::Key, KeyCode::Char},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
-use ratatui::{
-    prelude::{CrosstermBackend, Terminal},
-    widgets::Paragraph,
-};
-
 mod tui;
 
-use crate::tui::Event;
-use crate::tui::Tui;
-
+use color_eyre::eyre::Result;
+use crossterm::event::KeyCode::Char;
+use ratatui::{prelude::CrosstermBackend, widgets::Paragraph};
+use tui::Event;
 
 pub type Frame<'a> = ratatui::Frame<'a>;
 
-fn startup() -> Result<()> {
-    enable_raw_mode()?;
-    execute!(std::io::stderr(), EnterAlternateScreen)?;
-    Ok(())
-}
-
-fn shutdown() -> Result<()> {
-    execute!(std::io::stderr(), LeaveAlternateScreen)?;
-    disable_raw_mode()?;
-    Ok(())
-}
 
 struct App {
     counter: i64,
