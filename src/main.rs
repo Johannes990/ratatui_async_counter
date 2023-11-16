@@ -13,34 +13,39 @@ struct App {
     should_quit: bool,
 }
 
-fn ui(app: &App, f: &mut Frame<'_>) {
+fn ui(f: &mut Frame<'_>, app: &App) {
     f.render_widget(Paragraph::new(format!("Counter: {}", app.counter)), f.size());
 }
 
-fn update(app: &mut App, event: Event) -> Result<()> {
-    if let Event::Key(key) = event {
-        match key.code {
-            Char('j') => app.counter += 1,
-            Char('k') => app.counter -= 1,
-            Char('q') => app.should_quit = true,
-            _ => {},
-        }
-    }
-    Ok(())
+fn update(app: &mut App, event: Event) {
+    match event {
+        Event::Key(key) => {
+            match key.code {
+                Char('j') => app.counter += 1,
+                Char('k') => app.counter -= 1,
+                Char('q') => app.should_quit = true,
+                _ => {},
+            }
+        },
+        _ => {},
+    };
 }
 
 async fn run() -> Result<()> {
-    let mut events = Tui::new();
-    let mut t = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
+    let mut tui = tui::Tui::new()?.tick_rate(1.0).frame_rate(30.0);
+    tui.enter()?;
     let mut app = App { counter: 0, should_quit: false };
 
     loop {
-        let event = events.next().await?;
+        let event = tui.next().await?; // blocks until next event
 
-        let _ = update(&mut app, event);
-        t.draw(|f| {
-            ui(&app, f);
-        })?;
+        if let Event::Render = event.clone() {
+            tui.draw(|f| {
+                ui(f, &app);
+            })?;
+        }
+
+        update(&mut app, event);
 
         if app.should_quit {
             break;
@@ -52,11 +57,7 @@ async fn run() -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    startup()?;
-
     let result = run().await;
-
-    shutdown()?;
 
     result?;
 

@@ -56,11 +56,11 @@ impl Tui {
         let frame_rate = 60.0;
         let terminal = ratatui::Terminal::new(Backend::new(std::io::stderr()))?;
         let (event_tx, event_rx) = mpsc::unbounded_channel();
-        let canellation_token = CancellationToken::new();
+        let cancellation_token = CancellationToken::new();
         let task = tokio::spawn(async {});
         let mouse = false;
         let paste = false;
-        Ok(Self { terminal, task, cancellation_token, event_rx, event_rx, frame_rate, tick_rate, mouse, paste })
+        Ok(Self { terminal, task, cancellation_token, event_rx, event_tx, frame_rate, tick_rate, mouse, paste })
     }
 
     pub fn tick_rate(mut self, tick_rate: f64) -> Self {
@@ -79,7 +79,7 @@ impl Tui {
     }
 
     pub fn paste(mut self, paste: bool) -> Self {
-        self.pase = paste;
+        self.paste = paste;
         self
     }
 
@@ -96,7 +96,7 @@ impl Tui {
             let mut render_interval = tokio::time::interval(render_delay);
             _event_tx.send(Event::Init).unwrap();
 
-            loop{
+            loop {
                 let tick_delay = tick_interval.tick();
                 let render_delay = render_interval.tick();
                 let crossterm_event = reader.next().fuse();
@@ -123,10 +123,10 @@ impl Tui {
                                         _event_tx.send(Event::FocusLost).unwrap();
                                     },
                                     CrosstermEvent::FocusGained => {
-                                        _event_tx.send(CrosstermEvent::FocusGained).unwrap();
+                                        _event_tx.send(Event::FocusGained).unwrap();
                                     },
                                     CrosstermEvent::Paste(s) => {
-                                        _event_tx.send(CrosstermEvent::Paste(s)).unwrap();
+                                        _event_tx.send(Event::Paste(s)).unwrap();
                                     },
                                 }
                             }
@@ -154,7 +154,7 @@ impl Tui {
         if self.mouse {
             crossterm::execute!(std::io::stderr(), EnableMouseCapture)?;
         }
-        is self.paste {
+        if self.paste {
             crossterm::execute!(std::io::stderr(), EnableBracketedPaste)?;
         }
 
@@ -172,7 +172,7 @@ impl Tui {
             if self.mouse {
                 crossterm::execute!(std::io::stderr(), DisableMouseCapture)?;
             }
-            corssterm::execute!(std::io::stderr(), LeaveAlternateScreen, cursor::Show)?;
+            crossterm::execute!(std::io::stderr(), LeaveAlternateScreen, cursor::Show)?;
             crossterm::terminal::disable_raw_mode()?;
         }
         Ok(())
